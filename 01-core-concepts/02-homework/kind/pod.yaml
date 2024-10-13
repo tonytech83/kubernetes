@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kind-homework-1
+  namespace: kind-homework
+  labels:
+    app: hw
+    tier: gold
+spec:
+  containers:
+    - name: oracle-container
+      image: shekeriev/k8s-oracle
+      ports:
+        - containerPort: 5000

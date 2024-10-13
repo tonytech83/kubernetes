@@ -457,3 +457,110 @@ $ kubectl delete -f .\01-ns.yaml
 namespace "translate" deleted
 ```
 ### 5. _Optional:_ Give the KIND tool a try and spin up a Kubernetes cluster in a Docker instance. Once done, start the pod (task 1.b) and the service (task 1.g) either imperatively or with manifests (for example, the ones from task 2)
+#### - Create KIND cluster
+```sh
+$ kind create cluster
+Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.31.0) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kind
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+```
+#### - Imperative approach
+```sh
+$ kubectl create namespace homework
+namespace/homework created
+
+$ kubectl run homework-1 --image=shekeriev/k8s-oracle -n homework --labels=app=hw,tier=gold --restart=Never --port=5000
+pod/homework-1 created
+
+$ kubectl expose pod homework-1 -n homework --name=homework-svc --port=32000 --target-port=5000 --type=NodePort
+
+$ kubectl get services -n homework
+NAME           TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)           AGE
+homework-svc   NodePort   10.96.88.163   <none>        32000:30449/TCP   7m6s
+
+$ kubectl port-forward svc/homework-svc 8080:32000 -n homework
+Forwarding from 127.0.0.1:8080 -> 5000
+Forwarding from [::1]:8080 -> 5000
+Handling connection for 8080
+Handling connection for 8080
+```
+Picture:
+![pic-4](./pictures/pic-4.png)
+#### - Declarative approach
+- Namespace `kind-homework`
+```sh
+$ cat .\ns.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kind-homework
+```
+- Pod `kind-homework-1`
+```sh
+$ cat .\pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kind-homework-1
+  namespace: kind-homework
+  labels:
+    app: hw
+    tier: gold
+spec:
+  containers:
+    - name: oracle-container
+      image: shekeriev/k8s-oracle
+      ports:
+        - containerPort: 5000
+```
+- Service `kind-homework-svc`
+```sh
+$ cat .\svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kind-homework-svc
+  namespace: kind-homework
+spec:
+  selector:
+    app: hw
+  ports:
+    - protocol: TCP
+      port: 32000
+      targetPort: 5000
+  type: NodePort
+```
+Apply with folder
+```sh
+$ kubectl apply -f .\kind\
+namespace/kind-homework created
+pod/kind-homework-1 created
+service/kind-homework-svc created
+```
+Check the service in browser
+```sh
+$ kubectl port-forward svc/kind-homework-svc 8081:32000 -n kind-homework
+Forwarding from 127.0.0.1:8081 -> 5000
+Forwarding from [::1]:8081 -> 5000
+Handling connection for 8081
+Handling connection for 8081
+```
+Picture:
+![pic-5](./pictures/pic-5.png)
+
+Delete kind cluster
+```sh
+$ kind delete cluster
+Deleting cluster "kind" ...
+Deleted nodes: ["kind-control-plane"]
+```
