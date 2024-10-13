@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: homework-2
+  namespace: homework
+  labels:
+    app: hw
+  annotations:
+    purpose: homework
+spec:
+  containers:
+  - image: shekeriev/k8s-oracle
+    name: homework-2
+    ports:
+    - containerPort: 5000

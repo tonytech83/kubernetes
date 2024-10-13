@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: translate-svc
+  namespace: translate
+spec:
+  selector:
+    app: hw
+  ports:
+    - protocol: TCP
+      port: 32000
+      targetPort: 5000
+  type: NodePort

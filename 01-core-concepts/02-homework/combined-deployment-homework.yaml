@@ -1,0 +1,42 @@
+# 01-homework-ns.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homework
+---
+# Combined deployment for homework-1 and homework-2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homework-deployment
+  namespace: homework
+spec:
+  replicas: 2 
+  selector:
+    matchLabels:
+      app: hw
+  template:
+    metadata:
+      labels:
+        app: hw
+    spec:
+      containers:
+      - name: app
+        image: shekeriev/k8s-oracle
+        ports:
+        - containerPort: 5000
+---
+# 04-homework-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: homework-svc
+  namespace: homework
+spec:
+  selector:
+    app: hw
+  ports:
+    - protocol: TCP
+      port: 32000
+      targetPort: 5000
+  type: NodePort

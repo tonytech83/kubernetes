@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: speaker
+  namespace: translate
+  labels:
+    app: hw
+spec:
+  containers:
+  - image: shekeriev/k8s-speaker
+    name: speaker
+    ports:
+    - containerPort: 5000
