@@ -1,0 +1,41 @@
+---
+- name: Kubernetes Control Plane Initialization
+  hosts: cp.k8s
+  become: true
+  tasks:
+
+    - name: Initialize Kubernetes cluster
+      command: kubeadm init --apiserver-advertise-address=192.168.88.152 --pod-network-cidr=10.244.0.0/16
+      register: kubeadm_init_output
+
+    - name: Display full join command for workers
+      debug:
+        msg: "{{ kubeadm_init_output.stdout | regex_replace('\\\\', '') | regex_replace('\\n', ' ') | regex_replace('\\t', ' ') | regex_search('kubeadm join.*') }}"
+
+    - name: Create Kubernetes config directory
+      file:
+        path: $HOME/.kube
+        state: directory
+        mode: '0755'
+
+    - name: Copy Kubernetes admin.conf to user .kube directory
+      shell: cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+    - name: Set ownership of Kubernetes config
+      shell: chown $(id -u):$(id -g) $HOME/.kube/config
+
+    - name: Install Flannel network plugin
+      command: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
+    - name: Wait for 30 seconds
+      pause:
+        seconds: 30
+
+    - name: Check node readiness after Flannel installation
+      command: kubectl get nodes
+      register: final_node_status
+      ignore_errors: true
+
+    - name: Display final node readiness
+      debug:
+        msg: "{{ final_node_status.stdout_lines }}"

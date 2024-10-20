@@ -1,0 +1,207 @@
+---
+- name: Prepare Kubernetes Cluster Nodes
+  hosts: all
+  become: true
+  tasks:
+    # Check if the br_netfilter module is loaded
+    - name: Install kmod package (for modprobe)
+      apt:
+        name: kmod
+        state: present
+
+    - name: Check if br_netfilter module is loaded
+      shell: lsmod | grep br_netfilter
+      register: br_netfilter_loaded
+      ignore_errors: true
+
+    - name: Load br_netfilter module if not loaded
+      command: modprobe br_netfilter
+      when: br_netfilter_loaded.stdout == ""
+
+    - name: Ensure br_netfilter is loaded on boot
+      copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          br_netfilter
+
+    - name: Configure sysctl for network settings
+      copy:
+        dest: /etc/sysctl.d/k8s.conf
+        content: |
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
+
+    - name: Apply sysctl settings
+      command: sysctl --system
+
+    # Switch iptables to iptables-legacy
+    - name: Check if iptables is installed
+      command: dpkg -l | grep iptables
+      register: iptables_installed
+      ignore_errors: true
+
+    - name: Install iptables if not installed
+      apt:
+        name: iptables
+        state: present
+      when: iptables_installed.rc != 0
+
+    - name: Check which variant of iptables is in use
+      command: update-alternatives --query iptables
+      register: iptables_variant
+      when: iptables_installed.rc == 0
+
+    - name: Switch to iptables-legacy
+      command: update-alternatives --set iptables /usr/sbin/iptables-legacy
+      when: 
+        - iptables_installed.rc == 0
+        - "'iptables-legacy' not in iptables_variant.stdout"
+
+    # Disable swap file
+    - name: Disable swap for the current session
+      command: swapoff -a
+
+    - name: Ensure swap is disabled on boot
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^\s*[^#]*\sswap\s'
+        line: '# swap disabled by Ansible'
+
+    # Container runtime
+    - name: Install Docker prerequisites
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+
+    - name: Ensure /etc/apt/keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download and install Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      notify:
+        - update apt cache
+
+    - name: Install Docker and containerd packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    # Kubernetes components
+    # Ensure Kubernetes prerequisites are installed
+    - name: Install Kubernetes prerequisites
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+
+    # Ensure /etc/apt/keyrings directory exists
+    - name: Ensure /etc/apt/keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    # Download and install the Kubernetes GPG key correctly
+    - name: Download and install Kubernetes GPG key
+      shell: |
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+
+    # Add the Kubernetes repository with the correct GPG key path
+    - name: Add Kubernetes repository
+      shell: |
+        echo 'deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+      notify:
+        - update apt cache
+
+    # Update the apt cache after adding the repositories
+    - name: Update apt cache after adding repositories
+      apt:
+        update_cache: yes
+
+    # Install Kubernetes components
+    - name: Install Kubernetes components
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items: 
+        - kubelet
+        - kubeadm
+        - kubectl
+
+
+    - name: Backup containerd config
+      command: cp /etc/containerd/config.toml /etc/containerd/config.toml.bak
+      ignore_errors: true
+
+    - name: Generate containerd config
+      shell: containerd config default | tee /etc/containerd/config.toml > /dev/null
+
+    - name: Update SystemdCgroup setting in containerd config
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+
+    - name: Update pause container image version to 3.9
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'pause:3.8'
+        replace: 'pause:3.9'
+
+    - name: Restart containerd
+      service:
+        name: containerd
+        state: restarted
+
+    # /etc/hosts update
+    - name: Remove '127.0.1.1 debian' entry from /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        state: absent
+        regexp: '^127\.0\.1\.1\s+debian'
+      become: true
+    
+    - name: Ensure Kubernetes host entries are present in /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        state: present
+        line: "{{ item }}"
+        create: yes
+      with_items:
+        - "192.168.88.152 cp.k8s"
+        - "192.168.88.153 worker1.k8s"
+        - "192.168.88.154 worker2.k8s"
+      become: true
+
+  handlers:
+    - name: update apt cache
+      apt:
+        update_cache: yes

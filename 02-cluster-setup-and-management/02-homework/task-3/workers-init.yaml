@@ -1,0 +1,18 @@
+---
+- name: Join Kubernetes worker nodes to the cluster
+  hosts: workers
+  become: true
+  tasks:
+    - name: Join the worker node to the Kubernetes cluster
+      command: kubeadm join 192.168.88.152:6443 --token v9rqqj.nvf7swqjcyvq3xgw --discovery-token-ca-cert-hash sha256:f2b19f7189ac0f0cd45bc19d576409d8f03d8e2930f0a0ed6ed53aeb35600a50
+      register: join_output
+      ignore_errors: true
+
+    - name: Display the output of the join command
+      debug:
+        var: join_output.stdout
+
+    - name: Restart kubelet service to ensure node starts properly
+      service:
+        name: kubelet
+        state: restarted

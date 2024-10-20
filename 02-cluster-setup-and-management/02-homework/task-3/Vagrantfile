@@ -1,0 +1,44 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Base configuration
+  config.ssh.insert_key = false
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  # Define control-plane node
+  config.vm.define "cp" do |srv|
+    srv.vm.box = "generic/debian12"
+    srv.vm.hostname = "cp.k8s"
+    srv.vm.network "public_network", bridge: true
+    srv.vm.provider "vmware_desktop" do |v|
+      v.memory = 2048
+      v.cpus = 2
+      v.linked_clone = true
+    end
+  end
+
+  # Define worker 1 node
+  config.vm.define "worker1" do |srv|
+    srv.vm.box = "generic/debian12"
+    srv.vm.hostname = "worker1.k8s"
+    srv.vm.network "public_network", bridge: true
+    srv.vm.provider "vmware_desktop" do |v|
+      v.memory = 2048
+      v.cpus = 2
+      v.linked_clone = true
+    end
+  end
+
+  # Define worker 2 node
+  config.vm.define "worker2" do |srv|
+    srv.vm.box = "generic/debian12"
+    srv.vm.hostname = "worker2.k8s"
+    srv.vm.network "public_network", bridge: true
+    srv.vm.provider "vmware_desktop" do |v|
+      v.memory = 2048
+      v.cpus = 2
+      v.linked_clone = true
+    end
+  end
+end

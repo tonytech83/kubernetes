@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oracle-deployment
+  namespace: task-2
+  labels:
+    app: oracle
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: oracle
+  template:
+    metadata:
+      labels:
+        app: oracle
+    spec:
+      containers:
+        - name: oracle
+          image: shekeriev/k8s-oracle
+          ports:
+            - containerPort: 5000
