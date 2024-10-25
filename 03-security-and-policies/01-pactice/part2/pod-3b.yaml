@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-3b
+  namespace: reslim
+spec:
+  containers:
+  - image: busybox
+    command: ["sh", "-c", "sleep 30s ; dd if=/dev/zero of=/dev/null bs=64M"]
+    name: main
+    resources:
+      requests:
+        cpu: 250m
+        memory: 16Mi
+      limits:
+        cpu: 500m
+        memory: 32Mi

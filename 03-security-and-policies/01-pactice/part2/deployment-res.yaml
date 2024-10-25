@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: res
+  namespace: reslim
+spec:
+  replicas: 3
+  selector:
+    matchLabels: 
+      purpose: res
+  minReadySeconds: 15
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        purpose: res
+    spec:
+      containers:
+      - name: main
+        image: alpine
+        command: ["dd", "if=/dev/zero", "of=/dev/null", "bs=32M"]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 32Mi
