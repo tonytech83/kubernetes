@@ -16,7 +16,7 @@ SCRIPT
 
 $podnet = <<SCRIPT
 # Possible values are none, flannel, calico, and antrea
-PODNETWORK='none'
+PODNETWORK='flannel'
 
 if [ $PODNETWORK == 'flannel' ]; then
   echo "* Installing Pod Network plugin (Flannel) ..."
