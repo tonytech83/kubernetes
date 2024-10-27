@@ -10,10 +10,11 @@ The main goal of the course is to provide a sufficient level of comfort in worki
 
 <br/>
 
-## Language
+## Language and Tools
 
 - `YAML`
 - `Docker`
+- `Kubernetes`
 
 ## Judge System
 
