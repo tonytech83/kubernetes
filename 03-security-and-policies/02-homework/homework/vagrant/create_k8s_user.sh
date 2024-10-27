@@ -18,7 +18,7 @@ create_private_key() {
   sudo mkdir -p .certs && cd .certs
 
   printf "Generating private key for %s...\n" "$username"
-  openssl genrsa -out ${username}.key 2048
+  sudo openssl genrsa -out ${username}.key 2048
 
   printf "Private key generated for user %s\n" "$username"
 }
@@ -29,7 +29,7 @@ create_certificates() {
   local groupname=$2
 
   printf "Creating Certificate Signing Request (CSR) for %s...\n" "$username"
-  openssl req -new -key ${username}.key -out ${username}.csr -subj "/CN=${username}/O=${groupname}"
+  sudo openssl req -new -key ${username}.key -out ${username}.csr -subj "/CN=${username}/O=${groupname}"
 
   printf "Signing the CSR with Kubernetes CA...\n"
   sudo openssl x509 -req -in ${username}.csr -CA /etc/kubernetes/pki/ca.crt -CAkey /etc/kubernetes/pki/ca.key -CAcreateserial -out ${username}.crt -days 365
@@ -70,6 +70,8 @@ users:
     client-certificate: /home/${username}/.certs/${username}.crt
     client-key: /home/${username}/.certs/${username}.key
 EOF
+
+  sudo chown -R ${username}: /home/${username}/
 }
 
 # Read user input
