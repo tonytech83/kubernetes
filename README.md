@@ -23,6 +23,7 @@ The main goal of the course is to provide a sufficient level of comfort in worki
 
 - [`Core Concepts`](https://github.com/tonytech83/kubernetes/tree/main/01-core-concepts)
 - [`Cluster Setup and Management`](https://github.com/tonytech83/kubernetes/tree/main/02-cluster-setup-and-management)
+- [`Security and Policies`](https://github.com/tonytech83/kubernetes/tree/main/03-security-and-policies)
 
 <br/>
 <br/>
