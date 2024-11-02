@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-ed
+  labels:
+    app: notes
+spec:
+  containers:
+  - image: shekeriev/k8s-notes
+    name: container-ed
+    volumeMounts:
+    - mountPath: /data
+      name: data-volume
+  volumes:
+  - name: data-volume
+    emptyDir: {}

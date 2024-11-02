@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-no-env
+  labels:
+    app: environ
+spec:
+  containers:
+  - image: shekeriev/k8s-environ
+    name: cont-no-env

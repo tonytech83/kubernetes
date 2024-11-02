@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-git
+  labels:
+    app: notes
+spec:
+  containers:
+  - image: php:apache
+    name: container-git
+    volumeMounts:
+    - mountPath: /var/www/html
+      name: git-volume
+    - mountPath: /data
+      name: data-volume
+  volumes:
+  - name: git-volume
+    gitRepo:
+      repository: "https://github.com/shekeriev/k8s-notes.git"
+      revision: "main"
+      directory: .
+  - name: data-volume
+    emptyDir: {}

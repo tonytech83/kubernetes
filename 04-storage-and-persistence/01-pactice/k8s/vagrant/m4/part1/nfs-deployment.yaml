@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notes-deploy
+spec:
+  replicas: 3
+  selector:
+    matchLabels: 
+      app: notes
+  template:
+    metadata:
+      labels:
+        app: notes
+    spec:
+      containers:
+      - name: container-nfs
+        image: shekeriev/k8s-notes
+        volumeMounts:
+        - mountPath: /data
+          name: nfs-data
+      volumes:
+      - name: nfs-data
+        nfs:
+          server: nfs-server
+          path: /data/nfs/k8sdata

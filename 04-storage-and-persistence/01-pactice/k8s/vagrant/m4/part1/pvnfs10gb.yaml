@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pvnfs10gb
+  labels:
+    purpose: demo
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Recycle
+  mountOptions:
+    - nfsvers=4.1
+  nfs:
+    path: /data/nfs/k8sdata
+    server: nfs-server

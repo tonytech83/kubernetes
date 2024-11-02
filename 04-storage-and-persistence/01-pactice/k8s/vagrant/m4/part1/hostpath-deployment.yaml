@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notes-deploy
+spec:
+  replicas: 3
+  selector:
+    matchLabels: 
+      app: notes
+  template:
+    metadata:
+      labels:
+        app: notes
+    spec:
+      containers:
+      - name: container-hp
+        image: shekeriev/k8s-notes
+        volumeMounts:
+        - mountPath: /data
+          name: hp-data
+      volumes:
+      - name: hp-data
+        hostPath:
+          path: /tmp/data
+          type: Directory
