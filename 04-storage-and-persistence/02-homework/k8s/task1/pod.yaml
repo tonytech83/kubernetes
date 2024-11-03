@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-task1
+  labels:
+    app: environ-task1
+spec:
+  containers:
+  - image: shekeriev/k8s-environ
+    name: task1
+    envFrom:
+    - configMapRef:
+        name: hwcm
+      prefix: HW_
+    env:
+    - name: HW_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: hwcm
+          key: port.conf
+    volumeMounts:
+    - name: config-volume
+      mountPath: /config
+    - name: secret-volume
+      mountPath: /secret
+
+  volumes:
+  - name: config-volume
+    configMap:
+      name: hwcm
+      items:
+      - key: main.conf
+        path: main.conf
+  - name: secret-volume
+    secret:
+      secretName: hwsec

@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: be-statefulset
+spec:
+  serviceName: be-service
+  selector:
+    matchLabels:
+      app: be
+  replicas: 3
+  # POD template    
+  template:
+    metadata:
+      labels:
+        app: be
+    spec:
+      containers:
+      - name: be-container
+        image: shekeriev/k8s-facts
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: be-volume
+          mountPath: /data
+          readOnly: false
+  # VolumeClaim template  
+  volumeClaimTemplates:
+  - metadata:
+      name: be-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi

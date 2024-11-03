@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hwcm
+data:
+  k8sver: "v1.30.3"
+  k8sos: "debian"
+
