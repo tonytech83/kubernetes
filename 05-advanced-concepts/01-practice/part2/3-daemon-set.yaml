@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: daemon-set
+spec: 
+  selector:
+    matchLabels: 
+      app: daemon-set
+  template:
+    metadata:
+      labels: 
+        app: daemon-set
+    spec:
+      nodeSelector: 
+        disk: samsung
+      containers:
+      - name: main
+        image: shekeriev/k8s-appa:v1
+        ports:
+        - containerPort: 80

@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: batch-job-cron
+spec: 
+  schedule: "*/2 * * * *"
+  jobTemplate:
+    spec: 
+      template:
+        metadata:
+          labels: 
+            app: batch-job-cron
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: main
+            image: shekeriev/sleeper
