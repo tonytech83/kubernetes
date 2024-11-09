@@ -18,9 +18,9 @@ spec:
     image: alpine
     command: ["/bin/sh", "-c"]
     args:
-      - echo "$(date +'%Y-%m-%d %H:%M:%S') => begin initialization …" '<br />' >> /data/index.html;
+      - echo "$(date +'%d-%m-%Y %H:%M:%S') => begin initialization ..." '<br />' >> /data/index.html;
         sleep 10;
-        echo "$(date +'%Y-%m-%d %H:%M:%S') => … done" '<br />' >> /data/index.html;
+        echo "$(date +'%d-%m-%Y %H:%M:%S') => ... done" '<br />' >> /data/index.html;
     volumeMounts:
     - name: data
       mountPath: /data
@@ -28,7 +28,7 @@ spec:
     image: alpine
     command: ["/bin/sh", "-c"]
     args:
-      - echo "$(date +'%Y-%m-%d %H:%M:%S') => => launching the application …" '<br />' >> /data/index.html;
+      - echo "$(date +'%d-%m-%Y %H:%M:%S') => launching the application ..." '<br />' >> /data/index.html;
     volumeMounts:
     - name: data
       mountPath: /data

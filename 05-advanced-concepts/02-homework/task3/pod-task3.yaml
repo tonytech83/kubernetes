@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-task3
+  labels:
+    app: pod-task3
+spec:
+  containers:
+  - image: shekeriev/k8s-environ
+    name: main
+    env:
+    - name: TOPOLOGY
+      value: "POD-TASK3 -> SERVICE-TASK3"
+    - name: FOCUSON
+      value: "TOPOLOGY"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-task3
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    app: pod-task3
