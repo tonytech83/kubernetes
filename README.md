@@ -27,6 +27,7 @@ The main goal of the course is to provide a sufficient level of comfort in worki
 - [`Security and Policies`](https://github.com/tonytech83/kubernetes/tree/main/03-security-and-policies)
 - [`Storage and Persistence`](https://github.com/tonytech83/kubernetes/tree/main/04-storage-and-persistence)
 - [`Advanced Concepts`](https://github.com/tonytech83/kubernetes/tree/main/05-advanced-concepts)
+- [`Observability and Troubleshooting`](https://github.com/tonytech83/kubernetes/tree/main/06-observability-and-troubleshooting)
 
 <br/>
 <br/>
