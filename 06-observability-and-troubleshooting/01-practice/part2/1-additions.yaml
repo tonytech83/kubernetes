@@ -1,0 +1,21 @@
+# volumes
+  - hostPath: 
+      path: /var/lib/k8s-audit/1-audit-simple.yaml
+      type: File
+    name: audit-policy
+  - hostPath:
+      path: /var/log/k8s-audit/audit.log
+      type: FileOrCreate
+    name: audit-log
+
+# volume mounts
+    - mountPath: /var/lib/k8s-audit/1-audit-simple.yaml
+      name: audit-policy  
+      readOnly: true
+    - mountPath: /var/log/k8s-audit/audit.log
+      name: audit-log  
+      readOnly: false
+
+# command line
+    - --audit-policy-file=/var/lib/k8s-audit/1-audit-simple.yaml
+    - --audit-log-path=/var/log/k8s-audit/audit.log
