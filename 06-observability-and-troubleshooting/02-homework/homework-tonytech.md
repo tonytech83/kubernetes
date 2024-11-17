@@ -215,5 +215,231 @@ $ curl http://localhost:30001
 
 ![pic-1](./pictures/pic-1.png)
 
+- Fixed manifest
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: readiness-http
+  name: readiness-http
+spec:
+  initContainers:
+  - name: init-data
+    image: alpine
+    command: ["/bin/sh", "-c"]
+    args:
+      - echo '(Almost) Always Ready to Serve ;)' > /usr/share/nginx/html/index.html
+    volumeMounts:
+    - name: data
+      mountPath: /usr/share/nginx/html
+
+  containers:
+  - name: cont-main
+    image: nginx
+    volumeMounts:
+    - name: data
+      mountPath: /usr/share/nginx/html
+    readinessProbe:
+      httpGet:
+        path: /healthy.html
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+
+  - name: cont-sidecar-postpone
+    image: alpine
+    command: ["/bin/sh", "-c"]
+    args:
+      - while true; do
+          sleep 20;
+          echo 'WORKING' > /check/healthy.html;
+          sleep 60;
+        done
+    volumeMounts:
+    - name: data
+      mountPath: /check
+
+  - name: cont-sidecar-break
+    image: alpine
+    command: ["/bin/sh", "-c"]
+    args:
+      - while true; do
+          sleep 60;
+          rm /check/healthy.html;
+          sleep 20;
+        done
+    volumeMounts:
+    - name: data
+      mountPath: /check
+
+  volumes:
+  - name: data
+    emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: readiness-cmd
+  labels:
+    app: readiness-cmd
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    nodePort: 30001
+    protocol: TCP
+  selector:
+    app: readiness-http
+```
+
 ### 2. Try to solve scenario 3 and make the application working again
+- Initial apply of manifest file
+```sh
+$ kubectl apply -f task2.yaml
+pod/startup-mixed created
+service/startup-mixed created
+```
+After initial apply we didn't see any problems with creation of pod and service
+- Check the pod and containers inside
+```sh
+$ kubectl get pod -o wide
+NAME            READY   STATUS    RESTARTS      AGE    IP           NODE    NOMINATED NODE   READINESS GATES
+startup-mixed   2/3     Running   4 (51s ago)   2m6s   10.244.2.7   node3   <none>           <none>
+```
+Only 2 of 3 are in status Running. We can check with describe the pod for more information.
+We found issue in container `cont-main` where startupProbe trying to execute `cat /check/healthy.html` but this file not present when probe start.
+To address the issue we add initialDelaySeconds with value 25 seconds. Fix the livenessProbe path and startupProbe command execution.
+- Fix container `cont-main` startupProbe
+```sh
+$ kubectl get pod -o wide -w
+NAME            READY   STATUS    RESTARTS   AGE   IP           NODE    NOMINATED NODE   READINESS GATES
+startup-mixed   2/3     Running   0          8s    10.244.1.9   node2   <none>           <none>
+startup-mixed   3/3     Running   0          31s   10.244.1.9   node2   <none>           <none>
+```
+- Check the service
+```sh
+curl 192.168.99.101:30001-w
+curl: (7) Failed to connect to 192.168.99.101 port 30001 after 0 ms: Couldn't connect to server
+```
+Execute describe against service and found there no Endpoints, this may be a problem with selector.
+- Fix the selector for service from `startup-nixed` to `startup-mixed`
+```sh
+$ kubectl describe service/startup-mixed
+Name:                     startup-mixed
+Namespace:                default
+Labels:                   app=startup-mixed
+Annotations:              <none>
+Selector:                 app=startup-mixed
+Type:                     NodePort
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.100.12.155
+IPs:                      10.100.12.155
+Port:                     <unset>  8080/TCP
+TargetPort:               8080/TCP
+NodePort:                 <unset>  30001/TCP
+Endpoints:                10.244.1.10:8080
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+``` 
+Now we can see the endpoint, but again there is a issue.
+```sh
+$ curl http://192.168.99.101:30001
+curl: (7) Failed to connect to 192.168.99.101 port 30001 after 0 ms: Couldn't connect to server
+```
+Check the service for other problems. There is a mismatch between service port `8080` and port of application container `80`. 
+- Change the service port to `80`
+```sh
+$ curl http://192.168.99.101:30001
+(Almost) Always Ready to Serve ;)
+```
+- Picture
+
+![pic-2](./pictures/pic-2.png)
+- Fixed manifest
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: startup-mixed
+  name: startup-mixed
+spec:
+  initContainers:
+  - name: init-data
+    image: alpine
+    command: ["/bin/sh", "-c"]
+    args:
+      - echo '(Almost) Always Ready to Serve ;)' > /data/index.html
+    volumeMounts:
+    - name: data
+      mountPath: /data
+      
+  containers:
+  - name: cont-main
+    image: nginx
+    volumeMounts:
+    - name: data
+      mountPath: /usr/share/nginx/html
+    livenessProbe:
+      httpGet:
+        path: /healthy.html
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    startupProbe:
+      exec:
+        command:
+        - cat 
+        - /usr/share/nginx/html/healthy.html
+      initialDelaySeconds: 25
+      failureThreshold: 3
+      periodSeconds: 5
+
+  - name: cont-sidecar-postpone
+    image: alpine
+    command: ["/bin/sh", "-c"]
+    args:
+      - while true; do
+          sleep 20; 
+          echo 'WORKING' > /check/healthy.html; 
+          sleep 60;
+        done
+    volumeMounts:
+    - name: data
+      mountPath: /check
+
+  - name: cont-sidecar-break
+    image: alpine
+    command: ["/bin/sh", "-c"]
+    args:
+      - while true; do
+          sleep 60; 
+          rm /check/healthy.html;
+          sleep 20;
+        done
+    volumeMounts:
+    - name: data
+      mountPath: /check
+  volumes:
+  - name: data
+    emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: startup-mixed
+  labels:
+    app: startup-mixed
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    nodePort: 30001
+    protocol: TCP
+  selector:
+    app: startup-mixed
+```
 ### 3. Try to solve scenario 4 and make the application working again
