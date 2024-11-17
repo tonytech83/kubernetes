@@ -443,3 +443,297 @@ spec:
     app: startup-mixed
 ```
 ### 3. Try to solve scenario 4 and make the application working again
+- From PersistentVolume manifest we understand that we should use nfs-server as separate VM. This server should have folder structure:
+```sh
+$ tree data/
+data/
+└── nfs
+    ├── k8spva
+    ├── k8spvb
+    └── k8spvc
+
+5 directories, 0 files
+```
+- Made folders writable for everyone
+```sh
+$ sudo chmod -R 777 /data/nfs/
+
+$ ls -al /data/nfs/
+total 20
+drwxrwxrwx 5 root root 4096 Nov 17 13:00 .
+drwxr-xr-x 3 root root 4096 Nov 17 13:00 ..
+drwxrwxrwx 2 root root 4096 Nov 17 13:00 k8spva
+drwxrwxrwx 2 root root 4096 Nov 17 13:00 k8spvb
+drwxrwxrwx 2 root root 4096 Nov 17 13:00 k8spvc
+```
+- Install NFS server
+```sh
+$ sudo apt update && sudo apt install nfs-kernel-server 
+
+$ sudo systemctl start nfs-kernel-server
+
+$ sudo systemctl enable nfs-kernel-server
+```
+- Install NFS client on all nodes
+```sh
+sudo apt update && sudo apt install -y nfs-common
+```
+- Add folders in `/etc/exports/` and restart `nfs-kernel-server`.
+```sh
+$ cat /etc/exports
+# /etc/exports: the access control list for filesystems which may be exported
+#               to NFS clients.  See exports(5).
+#
+# Example for NFSv2 and NFSv3:
+# /srv/homes       hostname1(rw,sync,no_subtree_check) hostname2(ro,sync,no_subtree_check)
+#
+# Example for NFSv4:
+# /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
+# /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
+#
+/data/nfs/k8spva        *(rw,sync,no_root_squash)
+/data/nfs/k8spvb        *(rw,sync,no_root_squash)
+/data/nfs/k8spvc        *(rw,sync,no_root_squash)
+```
+- Check the nfs shares
+```sh
+$ sudo exportfs
+/data/nfs/k8spva
+                <world>
+/data/nfs/k8spvb
+                <world>
+/data/nfs/k8spvc
+                <world>
+```
+- Apply manifest `pvss.yaml`
+```sh
+$ kubectl apply -f pvss.yaml
+Warning: spec.persistentVolumeReclaimPolicy: The Recycle reclaim policy is deprecated. Instead, the recommended approach is to use dynamic provisioning.
+persistentvolume/pvssa created
+persistentvolume/pvssc created
+The PersistentVolume "pvssb" is invalid: spec.accessModes: Unsupported value: "ReadOnly": supported values: "ReadOnlyMany", "ReadWriteMany", "ReadWriteOnce", "ReadWriteOncePod"
+```
+From error we found that accessModes for pvssb.
+We change accessModes from `ReadOnly` to `ReadOnlyMany`.
+- After fix
+```sh
+$ kubectl apply -f pvss.yaml
+Warning: spec.persistentVolumeReclaimPolicy: The Recycle reclaim policy is deprecated. Instead, the recommended approach is to use dynamic provisioning.
+persistentvolume/pvssa created
+persistentvolume/pvssb created
+persistentvolume/pvssc created
+```
+- Apply manifest `ss.yaml`
+```sh
+$ kubectl apply -f ss.yaml
+statefulset.apps/facts created
+```
+Although we have successful creation of StatefulSet, there is a problem with pod.
+```sh
+~$ kubectl get pod -o wide
+NAME      READY   STATUS              RESTARTS   AGE     IP       NODE    NOMINATED NODE   READINESS GATES
+facts-0   0/1     ContainerCreating   0          4m44s   <none>   node2   <none>           <none>
+```
+Check describe on facts-0 pod and found issue with mount of nfs share. In `pvss.yaml` manifest we had syntactic error. On `pvssc` change from `/bata/nfs/k8spvc` to `/data/nfs/k8spvc`
+- Fix syntactic error with `pvssc`.
+```sh
+$ kubectl get pod,pv,pvc
+NAME          READY   STATUS    RESTARTS   AGE
+pod/facts-0   1/1     Running   0          12m
+pod/facts-1   1/1     Running   0          6m25s
+pod/facts-2   0/1     Pending   0          6m16s
+
+NAME                     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                        STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+persistentvolume/pvssa   10Gi       RWO            Recycle          Bound       default/facts-data-facts-1                  <unset>                          12m
+persistentvolume/pvssb   1Mi        ROX            Recycle          Available                                               <unset>                          12m
+persistentvolume/pvssc   1Gi        RWO            Recycle          Bound       default/facts-data-facts-0                  <unset>                          12m
+
+NAME                                       STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/facts-data-facts-0   Bound     pvssc    1Gi        RWO                           <unset>                 12m
+persistentvolumeclaim/facts-data-facts-1   Bound     pvssa    10Gi       RWO                           <unset>                 6m25s
+persistentvolumeclaim/facts-data-facts-2   Pending
+```
+Now we have two running pods, but for third and fourth pods the pvc has no pv that satisfies the requirements. There are two approaches: create new pv which can satisfies the requirements; change `pvssb` parameters to satisfy the the pvc of third pod. I chose the second way and also scale out the StatefulSet form 4 to 3.
+- Change the parameters of `pvssb`. Change storage from 1Mi to 1Gi and accessModes from ReadOnlyMany to ReadWriteOnce. Change StatefulSet replicas from 4 to 3.
+```sh
+$ kubectl get pod,pv,pvc
+NAME          READY   STATUS    RESTARTS   AGE
+pod/facts-0   1/1     Running   0          2m28s
+pod/facts-1   1/1     Running   0          2m24s
+pod/facts-2   1/1     Running   0          2m20s
+
+NAME                     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+persistentvolume/pvssa   10Gi       RWO            Recycle          Bound    default/facts-data-facts-2                  <unset>                          4m9s
+persistentvolume/pvssb   1Gi        RWO            Recycle          Bound    default/facts-data-facts-1                  <unset>                          3m52s
+persistentvolume/pvssc   1Gi        RWO            Recycle          Bound    default/facts-data-facts-0                  <unset>                          4m9s
+
+NAME                                       STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/facts-data-facts-0   Bound    pvssc    1Gi        RWO                           <unset>                 2m28s
+persistentvolumeclaim/facts-data-facts-1   Bound    pvssb    1Gi        RWO                           <unset>                 2m24s
+persistentvolumeclaim/facts-data-facts-2   Bound    pvssa    10Gi       RWO                           <unset>                 2m20s
+```
+- Before apply of `svcss.yaml` service, we can see that selector is wrong. Change the selector from `factc` to `facts`. After change apply the manifest.
+```sh
+$ kubectl get pod,svc,pv,pvc
+NAME          READY   STATUS    RESTARTS   AGE
+pod/facts-0   1/1     Running   0          6m20s
+pod/facts-1   1/1     Running   0          6m16s
+pod/facts-2   1/1     Running   0          6m12s
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+service/facts        ClusterIP   None         <none>        5000/TCP   6s
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP    109m
+
+NAME                     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+persistentvolume/pvssa   10Gi       RWO            Recycle          Bound    default/facts-data-facts-2                  <unset>                          8m1s
+persistentvolume/pvssb   1Gi        RWO            Recycle          Bound    default/facts-data-facts-1                  <unset>                          7m44s
+persistentvolume/pvssc   1Gi        RWO            Recycle          Bound    default/facts-data-facts-0                  <unset>                          8m1s
+
+NAME                                       STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/facts-data-facts-0   Bound    pvssc    1Gi        RWO                           <unset>                 6m20s
+persistentvolumeclaim/facts-data-facts-1   Bound    pvssb    1Gi        RWO                           <unset>                 6m16s
+persistentvolumeclaim/facts-data-facts-2   Bound    pvssa    10Gi       RWO                           <unset>                 6m12s
+```
+- Before apply of `svcssnp.yaml` service, we can see that selector is wrong. Change the selector from `factc` to `facts`. Also type should be changed from ClusterIP to NodePort. 
+```sh
+$ curl http://192.168.99.101:30001/
+<h5>Recently discovered fact</h5>
+<h3>Green Lions Are Short And Trow Tomatoes</h3>
+<hr>
+<small><i>Served by <b>facts-1</b></i></small>
+<hr>
+facts-2 contains 1 fact(s)<br />
+facts-0 contains 0 fact(s)<br />
+facts-1 contains 1 fact(s)<br />
+```
+- Picture
+
+![pic-3](./pictures/pic-3.png)
+
+- Fixed manifest `pvss.yaml`
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pvssa
+  labels:
+    purpose: ssdemo
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  mountOptions:
+    - nfsvers=4.1
+  nfs:
+    path: /data/nfs/k8spva
+    server: nfs-server
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pvssb
+  labels:
+    purpose: ssdemo
+spec:
+  capacity:
+    storage: 1Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  mountOptions:
+    - nfsvers=4.1
+  nfs:
+    path: /data/nfs/k8spvb
+    server: nfs-server
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pvssc
+  labels:
+    purpose: ssdemo
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  mountOptions:
+    - nfsvers=4.1
+  nfs:
+    path: /data/nfs/k8spvc
+    server: nfs-server
+```
+- Fixed manifest `ss.yaml`
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: facts
+spec:
+  selector:
+    matchLabels:
+      app: facts
+  serviceName: facts
+  replicas: 3
+  # POD template
+  template:
+    metadata:
+      labels:
+        app: facts
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: main
+        image: shekeriev/k8s-facts
+        ports:
+        - name: app
+          containerPort: 5000
+        volumeMounts:
+        - name: facts-data
+          mountPath: /data
+  # VolumeClaim template
+  volumeClaimTemplates:
+  - metadata:
+      name: facts-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+```
+- Fixed manifest `svcss.yaml`
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: facts
+spec:
+  selector:
+    app: facts
+  clusterIP: None
+  ports:
+  - port: 5000
+    protocol: TCP
+```
+- Fixed manifest `svcssnp.yaml`
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: factsnp
+spec:
+  selector:
+    app: facts
+  type: NodePort
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30001
+    protocol: TCP
+```
