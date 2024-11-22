@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appa
+spec:
+  replicas: 1
+  selector:
+    matchLabels: 
+      app: appa
+  template:
+    metadata:
+      labels:
+        app: appa
+    spec:
+      containers:
+      - name: main
+        image: shekeriev/k8s-environ:latest
+        env:
+        - name: APPROACH
+          value: "STATIC"
+        - name: FOCUSON
+          value: "APPROACH"

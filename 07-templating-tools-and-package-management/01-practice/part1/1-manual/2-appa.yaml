@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appa
+spec:
+  replicas: %replicas%
+  selector:
+    matchLabels: 
+      app: appa
+  template:
+    metadata:
+      labels:
+        app: appa
+    spec:
+      containers:
+      - name: main
+        image: %image%:%tag%
+        env:
+        - name: APPROACH
+          value: "%approach%"
+        - name: FOCUSON
+          value: "APPROACH"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appa
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    nodePort: %nodeport%
+    protocol: TCP
+  selector:
+    app: appa

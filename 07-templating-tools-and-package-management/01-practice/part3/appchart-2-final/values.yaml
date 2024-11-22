@@ -1,0 +1,4 @@
+replicasCount: 1
+approachVar: "Helm Charts! :)"
+focusOnVar: "APPROACH"
+nodePort: 30001
