@@ -104,7 +104,7 @@ kind: Kustomization
 resources:
   - homework.yaml
 ```
-- Check the if base customization working
+- Check the base customization working
 ```sh
 $ kustomize build base/
 apiVersion: v1
