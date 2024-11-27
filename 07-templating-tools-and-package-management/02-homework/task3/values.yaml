@@ -1,0 +1,3 @@
+replicasCount: 3
+nodePort: 31000
+indexFile: "Hello from NGINX :)"
