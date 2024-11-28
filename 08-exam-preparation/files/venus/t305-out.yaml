@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ds305
+spec:
+  selector:
+    matchLabels:
+      app: ds305
+  template:
+    metadata:
+      labels:
+        app: ds305
+    spec:
+      containers:
+      - name: main
+        image: alpine
+        args:
+        - /bin/sh
+        - -c
+        - sleep 86400

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sleeper
+spec:
+  containers:
+  - image: alpine
+    name: main
+    args:
+    - /bin/sh
+    - -c
+    - sleep 60

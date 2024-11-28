@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kust
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kust
+  template:
+    metadata:
+      labels:
+        app: kust
+    spec:
+      containers:
+      - name: main
+        image: shekeriev/k8s-environ:latest
+        env:
+        - name: APPROACH
+          value: "Templating with Kustomize"
+        - name: FOCUSON
+          value: "APPROACH"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kust
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    nodePort: 30103
+    protocol: TCP
+  selector:
+    app: kust

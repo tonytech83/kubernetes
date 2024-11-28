@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: t208
+  namespace: cherry
+spec:
+  containers:
+  - image: shekeriev/k8s-environ
+    name: main
+    env:
+    - name: FRUIT
+      value: "Did you know that cherries are red and tasty? :)"
+    - name: FOCUSON
+      value: "FRUIT"
