@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: blue-
+commonLabels:
+  variant: blue
+resources:
+- ../../base
+patches:
+- path: cust-dpl.yaml
+- path: cust-svc.yaml
+images:
+- name: shekeriev/k8s-environ:latest
+  newName: shekeriev/k8s-environ
+  newTag: blue

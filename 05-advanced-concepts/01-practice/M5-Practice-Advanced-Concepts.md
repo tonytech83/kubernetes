@@ -1464,19 +1464,14 @@ Of course, should we want to customize it, we must clone the repository locally 
 As we have two ingress controllers, we must create an ingress class for this one *(the **NGINX** one created one)*
 
 Prepare a **haproxy-class.yaml** manifest with the following content
-
-**apiVersion: networking.k8s.io/v1**
-
-**kind: IngressClass**
-
-**metadata:**
-
-`  `**name: haproxy**
-
-**spec:**
-
-`  `**controller: haproxy.org/ingress-controller**
-
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+    name: haproxy
+spec:
+    controller: haproxy.org/ingress-controller
+```
 Save it and close it
 
 Send it to the cluster

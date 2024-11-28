@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pets-ingress
+  namespace: animals
+  annotations:
+    haproxy.org/path-rewrite: "/"
+spec:
+  ingressClassName: haproxy
+  rules:
+  - host: pets.lab
+    http:
+      paths:
+      - path: /cat
+        pathType: Prefix
+        backend:
+          service:
+            name: cat-svc
+            port:
+              number: 80
+      - path: /dog
+        pathType: Prefix
+        backend:
+          service:
+            name: dog-svc
+            port:
+              number: 80

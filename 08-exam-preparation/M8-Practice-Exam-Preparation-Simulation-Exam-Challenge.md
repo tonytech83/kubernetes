@@ -30,19 +30,232 @@ Tasks execution order should not be derived from the order in which they are lis
 Usually, all steps could be achieved by following different paths and using different tools. In the end, not the means, but the **results** are being **measured**, **except stated otherwise**
 #### Tasks checklist
 ##### **Mars Cluster** [18 pts]
+Check the current context and switch if necessary.
+```sh
+$ kubectl config get-contexts
+
+# Switch to context venus
+$ kubectl config use-context venus-admin@venus
+Switched to context "mars-admin@mars".
+```
 - (T101 / 3 pts) There is the **animals** namespace. There are two pairs of pod and service. You are expected to create an ingress resource (using the available ingress controller and class) that
   - Will be in the same namespace and named **pets-ingress**
   - Will serve the **pets.lab** host
   - Path **/cat** to be redirected to **cat-svc** service and **/dog** to the **dog-svc**
   - Store it in **/files/mars/t101-out.yaml** and be sure to deploy it
+  1. Check the ingressclass
+  ```sh
+  $ kubectl get ingressclass
+  NAME      CONTROLLER                       PARAMETERS   AGE
+  haproxy   haproxy.org/ingress-controller   <none>       11s
+  ```
+  2. Prepare manifest for Ingress object
+  ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: pets-ingress
+    namespace: animals
+    annotations:
+      haproxy.org/path-rewrite: "/"
+  spec:
+    ingressClassName: haproxy
+    rules:
+    - host: pets.lab
+      http:
+        paths:
+        - path: /cat
+          pathType: Prefix
+          backend:
+            service:
+              name: cat-svc
+              port:
+                number: 80
+        - path: /dog
+          pathType: Prefix
+          backend:
+            service:
+              name: dog-svc
+              port:
+                number: 80
+  ```
+  3. Check the port of ingress controller
+  ```sh
+  $ kubectl get service -n haproxy-controller
+  NAME                         TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                                     AGE
+  haproxy-kubernetes-ingress   NodePort   10.100.181.169   <none>        80:31080/TCP,443:31471/TCP,1024:31562/TCP   11m
+  ```
+  4. Check the ingress
+  ```sh
+  $ kubectl describe -n animals ingress pets-ingress
+  Name:             pets-ingress
+  Labels:           <none>
+  Namespace:        animals
+  Address:
+  Ingress Class:    haproxy
+  Default backend:  <default>
+  Rules:
+    Host        Path  Backends
+    ----        ----  --------
+    pets.lab
+                /cat   cat-svc:80 (10.244.1.4:80)
+                /dog   dog-svc:80 (10.244.1.5:80)
+  Annotations:  haproxy.org/path-rewrite: /
+  Events:       <none>
+  ```
+  5. Check if ingress working
+  ```sh
+  $ curl pets.lab:31080/dog
+
+  $ curl pets.lab:31080/cat
+  ```
 - (T102 / 3 pts) Explore the **tiger** namespace. There is a pod that is not in running state, but it should be. Its manifest is **/files/mars/t102-in.yaml**. Your mission, should you accept it, is to
   - Correct the issue(s) and reflect this in a new manifest **/files/mars/t102-out.yaml**
   - Make sure that the pod is in running state and doesn’t restart periodically because of a probe
+
+RESOLUTION
+- Fix the issue in manifest file (t102-out.yaml)
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tiger
+  namespace: tiger
+spec:
+  containers:
+  - image: alpine # Fix the image name
+    name: main
+    args:
+    - /bin/sh
+    - -c
+    - sleep 60; touch /tmp/healthy; sleep 86400
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 65 # Fix the initial delay to fit app sleep
+      periodSeconds: 5
+```
+- Delete the pod and apply the fixed manifest
+```sh
+$ kubectl delete -f t102-out.yaml
+pod "tiger" deleted
+
+$ kubectl apply -f t102-out.yaml
+pod/tiger created
+```
 - (T103 / 4 pts) Templating is a good and necessary technique. We have a simple manifest **(/files/mars/t103-in.yaml**) which we want to be able to easily deploy in production (**blue**) and in test (**green**). Using the **kustomize** application, you must prepare a set of folders and files in the **/files/mars/t103** folder that allows 
   - Base (without any changes) deployment and deployment to both environments
   - The **blue** deployment should increase the **replicas** to **3**, use the **blue** tag, and runs on port **31103**
   - The **green** deployment should use the **green** image tag and runs on port **32103**
   - Make sure that blue and green are deployed (but not the base)
+
+RESOLUTION
+- Create folder hierarchy
+```sh
+$ mkdir -p /files/mars/t103/{base,overlays}
+
+$ mkdir -p /files/mars/t103/overlays/{blue,green}
+```
+- Create `base/kustomization.yaml`
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - t103-in.yaml
+```
+- Create `overlays/blue/kustomization.yaml`
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: blue-
+commonLabels:
+  variant: blue
+resources:
+- ../../base
+patches:
+- path: cust-dpl.yaml
+- path: cust-svc.yaml
+```
+- Create `overlays/blue/cust-dpl.yaml`
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kust
+spec:
+  replicas: 3
+```
+- Create `overlays/blue/cust-svc.yaml`
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kust
+spec:
+  ports:
+  - port: 80
+    nodePort: 31103
+    protocol: TCP
+```
+- Modify the image tag for blue
+```sh
+sudo kustomize edit set image shekeriev/k8s-environ:latest=shekeriev/k8s-environ:blue
+```
+- Create `overlays/green/kustomization.yaml`
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: green-
+commonLabels:
+  variant: green
+resources:
+- ../../base
+patches:
+- path: cust-svc.yaml
+images:
+- name: shekeriev/k8s-environ:latest
+  newName: shekeriev/k8s-environ
+  newTag: green
+```
+- Create `overlays/greeb/cust-svc.yaml`
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kust
+spec:
+  ports:
+  - port: 80
+    nodePort: 32103
+    protocol: TCP
+```
+- Deploy
+```sh
+$ kustomize build overlays/blue/ | kubectl apply -f -
+# Warning: 'commonLabels' is deprecated. Please use 'labels' instead. Run 'kustomize edit fix' to update your Kustomization automatically.
+service/blue-kust created
+deployment.apps/blue-kust created
+
+$ sudo kubectl apply -k overlays/green/
+service/green-kust created
+deployment.apps/green-kust created
+```
+- Check the objects
+```sh
+$ kubectl get pods,svc
+NAME                              READY   STATUS    RESTARTS   AGE
+pod/blue-kust-5b7d595bc8-9lpf8    1/1     Running   0          106s
+pod/blue-kust-5b7d595bc8-kxfl4    1/1     Running   0          106s
+pod/blue-kust-5b7d595bc8-qljbc    1/1     Running   0          106s
+pod/green-kust-64d6bfd456-kmgk2   1/1     Running   0          49s
+
+NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+service/blue-kust    NodePort    10.98.138.113   <none>        80:31103/TCP   106s
+service/green-kust   NodePort    10.110.187.32   <none>        80:32103/TCP   49s
+service/kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP        123m
+```
 - (T104 / 2 pts) Explore the **cherry** namespace. There is a deployment that is failing. Your mission is to 
   - Find the reason for this and write it down *(**type of the object:name of the object**, for example **limit:banana**)* in the **/files/mars/t104-reason.txt** file
   - Correct the situation by changing the offending parameter of the deployment to comply  
