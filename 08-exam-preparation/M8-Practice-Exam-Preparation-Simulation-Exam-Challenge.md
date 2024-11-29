@@ -1,5 +1,5 @@
-﻿## Practice M8: Exam Preparation (Challenge)
-### 1. Exam Plot
+﻿# Practice M8: Exam Preparation (Challenge)
+## 1. Exam Plot
 Should you want to reproduce the environment, you will have to prepare the following set of machines:
 
 - **Exam station\*** is with **kubectl** + **helm** + **kustomize** installed
@@ -16,8 +16,8 @@ There is the **exam** user which has **sudo** privileges on all machines and can
 If you are constrained by the available resources, you can spin up the clusters one by one, as the tasks are grouped by cluster. You can even omit the exam station and use your host to control and work with the clusters
 
 Check the published archive for the setup files (folder **1-setup**). There is a separate folder (**2-files**) that contains the source or input files referenced in the tasks. Its content is expected to be copied in **/files** folder of the station
-### 2. Sample Exam
-#### Infrastructure
+## 2. Sample Exam
+### Infrastructure
 You will have to accomplish a set of tasks in the following infrastructure
 
 ![pic-1](pictures/pic-1.png)
@@ -28,8 +28,8 @@ Be sure to **follow strictly** the **naming** **conventions** specified in the c
 Tasks execution order should not be derived from the order in which they are listed below. Please note that there are tasks that depend on the successful completion of one or more other tasks
 
 Usually, all steps could be achieved by following different paths and using different tools. In the end, not the means, but the **results** are being **measured**, **except stated otherwise**
-#### Tasks checklist
-##### **Mars Cluster** [18 pts]
+### Tasks checklist
+#### **Mars Cluster** [18 pts]
 Check the current context and switch if necessary.
 ```sh
 $ kubectl config get-contexts
@@ -465,7 +465,7 @@ five-job   */5 * * * *   <none>     False     0        75s             89s
   serviceAccountName: observer
   ```
 ----
-##### **Jupiter Cluster** [25 pts]
+#### **Jupiter Cluster** [25 pts]
 Switch context
 ```sh
 $ kubectl config use-context jupiter-admin@jupiter
@@ -890,7 +890,7 @@ $ curl http://192.168.99.221:30169
   service/cherry-svc created
   ```
 ---
-##### **Venus Cluster** [17 pts]
+#### **Venus Cluster** [17 pts]
 Check the current context and switch if necessary.
 ```sh
 $ kubectl config get-contexts
