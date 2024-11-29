@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: observer
-  namespace: fortress
+  name: pod205
 spec:
-  serviceAccount: observer # add the service account
+  nodeSelector: # add new block
+    exam: fast # use requested label
   containers:
   - image: alpine
     name: main

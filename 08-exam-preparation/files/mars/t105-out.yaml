@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: five-job
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: main
+            image: alpine
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - sleep 60
+          restartPolicy: OnFailure

@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apple
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: apple
+  labels:
+    app: apple
+  namespace: apple
+spec:
+  containers:
+  - image: shekeriev/k8s-fruits
+    name: main
+    env:
+    - name: FRUITS
+      value: "Apples"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apple-svc
+  namespace: apple
+spec:
+  type: NodePort
+  ports:
+  - port: 5000
+    nodePort: 30901
+    protocol: TCP
+  selector:
+    app: apple
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orange
+  labels:
+    app: orange
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: orange
+  labels:
+    app: orange
+  namespace: orange
+spec:
+  containers:
+  - image: shekeriev/k8s-fruits
+    name: main
+    env:
+    - name: FRUITS
+      value: "Oranges"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orange-svc
+  namespace: orange
+spec:
+  type: NodePort
+  ports:
+  - port: 5000
+    nodePort: 30902
+    protocol: TCP
+  selector:
+    app: orange
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apricot
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: apricot
+  labels:
+    app: apricot
+  namespace: apricot
+spec:
+  containers:
+  - image: shekeriev/k8s-fruits
+    name: main
+    env:
+    - name: FRUITS
+      value: "Apricots"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apricot-svc
+  namespace: apricot
+spec:
+  type: NodePort
+  ports:
+  - port: 5000
+    nodePort: 30903
+    protocol: TCP
+  selector:
+    app: apricot
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apple
+  namespace: apple
+spec:
+  clusterIP: None
+  ports:
+  - port: 5000
+    protocol: TCP
+  selector:
+    app: apple
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orange
+  namespace: orange
+spec:
+  clusterIP: None
+  ports:
+  - port: 5000
+    protocol: TCP
+  selector:
+    app: orange
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apricot
+  namespace: apricot
+spec:
+  clusterIP: None
+  ports:
+  - port: 5000
+    protocol: TCP
+  selector:
+    app: apricot

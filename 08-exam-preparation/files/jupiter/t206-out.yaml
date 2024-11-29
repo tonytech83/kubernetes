@@ -1,10 +1,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: observer
-  namespace: fortress
+  name: pod206
 spec:
-  serviceAccount: observer # add the service account
+  nodeName: jupiter-2 # add row with name of requested node name
   containers:
   - image: alpine
     name: main

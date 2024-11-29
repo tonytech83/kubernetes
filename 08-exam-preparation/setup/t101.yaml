@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: animals
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cat
+  labels:
+    app: cat
+  namespace: animals
+spec:
+  containers:
+  - image: shekeriev/k8s-environ
+    name: main
+    env:
+    - name: SOUND
+      value: "Cat Meows"
+    - name: FOCUSON
+      value: "SOUND"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cat-svc
+  namespace: animals
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    app: cat
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dog
+  labels:
+    app: dog
+  namespace: animals
+spec:
+  containers:
+  - image: shekeriev/k8s-environ
+    name: main
+    env:
+    - name: SOUND
+      value: "Dog Barks"
+    - name: FOCUSON
+      value: "SOUND"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dog-svc
+  namespace: animals
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    app: dog

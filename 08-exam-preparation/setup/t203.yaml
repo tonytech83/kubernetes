@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cucumber
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cucumber-secret
+  namespace: cucumber
+data:
+  scretfact: VSByIGhAazNyCg==
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cucumber
+  labels:
+    app: cucumber
+  namespace: cucumber
+spec:
+  containers:
+  - image: alpine
+    name: main
+    args:
+    - /bin/sh
+    - -c
+    - sleep 86400
+    envFrom:
+    - secretRef:
+        name: cucumber-secret
+      prefix: S3C_
