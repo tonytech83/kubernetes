@@ -109,6 +109,7 @@ Switched to context "mars-admin@mars".
 
   $ curl pets.lab:31080/cat
   ```
+---
 - (T102 / 3 pts) Explore the **tiger** namespace. There is a pod that is not in running state, but it should be. Its manifest is **/files/mars/t102-in.yaml**. Your mission, should you accept it, is to
   - Correct the issue(s) and reflect this in a new manifest **/files/mars/t102-out.yaml**
   - Make sure that the pod is in running state and doesn’t restart periodically because of a probe
@@ -145,6 +146,7 @@ pod "tiger" deleted
 $ kubectl apply -f t102-out.yaml
 pod/tiger created
 ```
+---
 - (T103 / 4 pts) Templating is a good and necessary technique. We have a simple manifest **(/files/mars/t103-in.yaml**) which we want to be able to easily deploy in production (**blue**) and in test (**green**). Using the **kustomize** application, you must prepare a set of folders and files in the **/files/mars/t103** folder that allows 
   - Base (without any changes) deployment and deployment to both environments
   - The **blue** deployment should increase the **replicas** to **3**, use the **blue** tag, and runs on port **31103**
@@ -887,6 +889,7 @@ $ curl http://192.168.99.221:30169
   pod/t208 created
   service/cherry-svc created
   ```
+---
 ##### **Venus Cluster** [17 pts]
 Check the current context and switch if necessary.
 ```sh
