@@ -256,17 +256,201 @@ service/blue-kust    NodePort    10.98.138.113   <none>        80:31103/TCP   10
 service/green-kust   NodePort    10.110.187.32   <none>        80:32103/TCP   49s
 service/kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP        123m
 ```
+----
 - (T104 / 2 pts) Explore the **cherry** namespace. There is a deployment that is failing. Your mission is to 
   - Find the reason for this and write it down *(**type of the object:name of the object**, for example **limit:banana**)* in the **/files/mars/t104-reason.txt** file
-  - Correct the situation by changing the offending parameter of the deployment to comply  
+  - Correct the situation by changing the offending parameter of the deployment to comply
+
+RESOLUTION
+- Check the objects in namespace
+```sh
+$ kubectl get -n cherry pods,svc,deployment,rs
+NAME                          READY   STATUS             RESTARTS   AGE
+pod/cherry-5ff587dcd6-kfq7l   0/1     ErrImagePull       0          15h
+pod/cherry-5ff587dcd6-xzdj6   0/1     ImagePullBackOff   0          15h
+pod/cherry-5ff587dcd6-zkscl   0/1     ErrImagePull       0          15h
+
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/cherry   0/5     3            0           15h
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/cherry-5ff587dcd6   5         3         0       15h
+```
+- Found problem with image pull. Create file from deployment
+```sh
+$ kubectl get deployment -n cherry cherry -o yaml > t104.yaml
+```
+- Remove unnecessary rows from t104.yaml and fix the issues
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cherry
+  namespace: cherry
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 5
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: cherry
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: cherry
+    spec:
+      containers:
+      - args:
+        - /bin/sh
+        - -c
+        - sleep 86400
+        image: alpine # fix the image name
+        imagePullPolicy: IfNotPresent
+        name: main
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+```
+- Delete and Apply new deployment
+```sh
+$ kubectl delete -f t104.yaml
+deployment.apps "cherry" deleted
+
+$ kubectl apply -f t104.yaml
+deployment.apps/cherry created
+```
+- Check the resources for nodes
+```sh
+$ kubectl describe nodes mars-1
+
+$ kubectl describe nodes mars-2
+```
+- Check is there quotas
+```sh
+$ kubectl get quota -n cherry
+NAME     AGE   REQUEST     LIMIT
+cherry   15h   pods: 3/3
+```
+- Found that quota is the reason of the problem
+```sh
+$ kubectl get quota -n cherry -o yaml
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"ResourceQuota","metadata":{"annotations":{},"name":"cherry","namespace":"cherry"},"spec":{"hard":{"pods":3}}}
+    creationTimestamp: "2024-11-28T15:01:36Z"
+    name: cherry
+    namespace: cherry
+    resourceVersion: "12783"
+    uid: e56626de-69f1-4ceb-bf21-f8e7b9170867
+  spec:
+    hard:
+      pods: "3"
+  status:
+    hard:
+      pods: "3"
+    used:
+      pods: "3"
+kind: List
+metadata:
+  resourceVersion: ""
+```
+- Create `t104-reason.txt`
+```sh
+$ echo "ResourceQuota:cherry" > t104-reason.txt
+```
+- Correct  the deployment to 3 replicas.
+```sh
+$ kubectl edit deployment -n cherry
+deployment.apps/cherry edited
+```
+----
 - (T105 / 2 pts) Explore the pod manifest in **/files/mars/t105-in.yaml** file and
   - Create a new one (**/files/mars/t105-out.yaml**) that wraps the pod template in a **CronJob** named **five-job**
   - Set it to run **every 5 minutes** and deploy it
+
+RESOLUTION
+- Create manifest `t105-out.yaml`
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: five-job
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: main
+            image: alpine
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - sleep 60
+          restartPolicy: OnFailure
+```
+- Apply the manifest
+```sh
+$ kubectl apply -f t105-out.yaml
+cronjob.batch/five-job created
+
+$ kubectl get cronjob
+NAME       SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+five-job   */5 * * * *   <none>     False     0        75s             89s
+```
+----
 - (T106 / 4 pts) There is the **fortress** namespace. It is empty. Your mission is to
   - Create a **ServiceAccount** named **observer**
+  ```sh
+  $ kubectl create serviceaccount observer -n fortress
+  serviceaccount/observer created
+  ```
   - Create a **Role** named **looknotouch** that allows only **get** on **pods**
+  ```sh
+  $ kubectl create role looknotouch -n fortress --verb=get --resource=pods
+  role.rbac.authorization.k8s.io/looknotouch created
+  ```
   - Create a **RoleBinding** named **looknotouch** that binds the role to the service account
+  ```sh
+  $ kubectl create rolebinding looknotouch -n fortress --role=looknotouch --serviceaccount=fortress:observer
+  rolebinding.rbac.authorization.k8s.io/looknotouch created
+  ```
   - Modify the pod manifest **/files/mars/t106-in.yaml** to run the pod with the observer service account, store the new version in **/files/mars/t106-out.yaml** and deploy it
+  ```sh
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: observer
+    namespace: fortress
+  spec:
+    serviceAccount: observer # add the service account
+    containers:
+    - image: alpine
+      name: main
+      args:
+      - /bin/sh
+      - -c
+      - sleep 86400
+  ```
+----
 ##### **Jupiter Cluster** [25 pts]
 - (T201 / 4 pts) There are three namespaces – **apple**, **orange**, and **apricot**. In all three, there is a pair of pod and service. There aren’t any restrictions. You should correct this:
   - Add a network policy that will limit the **ingress access** to the pods in the **apple** namespace to connections, coming only from pods in the **orange** namespace
