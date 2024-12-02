@@ -12,10 +12,11 @@ The main goal of the course is to provide a sufficient level of comfort in worki
 
 ## Language and Tools
 
-- `YAML`
-- `Docker`
-- `Kubernetes`
-- `Vagrant`
+- ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5)
+- ![YAML](https://img.shields.io/badge/YAML-CB171E)
+- ![Docker](https://img.shields.io/badge/Docker-2496ED)
+- ![Vagrant](https://img.shields.io/badge/Vagrant-1868F2)
+- ![Helm](https://img.shields.io/badge/Helm-0F1689)
 
 ## Judge System
 
@@ -29,6 +30,8 @@ The main goal of the course is to provide a sufficient level of comfort in worki
 - [`Storage and Persistence`](https://github.com/tonytech83/kubernetes/tree/main/04-storage-and-persistence)
 - [`Advanced Concepts`](https://github.com/tonytech83/kubernetes/tree/main/05-advanced-concepts)
 - [`Observability and Troubleshooting`](https://github.com/tonytech83/kubernetes/tree/main/06-observability-and-troubleshooting)
+- [`Templating Tools and Package Management`](https://github.com/tonytech83/kubernetes/tree/main/07-templating-tools-and-package-management)
+- [`Exam Preparation`](https://github.com/tonytech83/kubernetes/tree/main/08-exam-preparation)
 
 <br/>
 <br/>
